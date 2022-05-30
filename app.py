@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 # CONNECTION TO DATABASE
 uri = os.getenv("DATABASE_URL")  # or other relevant config var
-if uri.startswith("postgres://"):
+if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
 else:
     uri = 'sqlite:///data.db'
