@@ -24,10 +24,10 @@ class Item(Resource):
 
     # CRUD
     def post(self, name):
+        data = Item.parser.parse_args()
+
         if ItemModel.find_by_name(name):
             return {'message': f"An item with name '{name}' already exist."}, 400
-
-        data = Item.parser.parse_args()
 
         item = ItemModel(name, **data)
 
@@ -46,6 +46,7 @@ class Item(Resource):
 
     def put(self, name):
         data = Item.parser.parse_args()
+        print(data)
 
         item = ItemModel.find_by_name(name)
 
@@ -78,6 +79,15 @@ class Item(Resource):
 class ItemList(Resource):
     def get(self):
         return {'items': [item.json() for item in ItemModel.query.all()]}
+
+
+class ItemStoreList(Resource):
+    def get(self, name):
+        item = ItemModel.find_by_name(name)
+        if item:
+            return {'item': name,
+                    'stores': [store.name for store in item.stores]}
+        return {'message': 'Item not found'}, 404
 
 
 
