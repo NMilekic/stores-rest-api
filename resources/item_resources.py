@@ -13,10 +13,10 @@ class Item(Resource):
                         type=str,
                         required=False,
                         help='You must enter unit of measure.')
-    parser.add_argument('quantity',
-                        type=float,
-                        required=True,
-                        help='You must enter quantity.')
+    # parser.add_argument('quantity',
+    #                     type=float,
+    #                     required=True,
+    #                     help='You must enter quantity.')
     parser.add_argument('category_id',
                         type=int,
                         required=False,
@@ -54,14 +54,13 @@ class Item(Resource):
             item = ItemModel(name, **data)
         else:
             item.price = data['price']
-            item.quantity = data['quantity']
 
         try:
             item.save_to_db()
         except:
             return {'message': 'An error occurred updating the item.'}, 500
 
-        return item.json()
+        return item.json(), 200
 
     def delete(self, name):
         item = ItemModel.find_by_name(name)
@@ -71,9 +70,9 @@ class Item(Resource):
                 item.delete_from_db()
             except:
                 return {'message': 'An error occurred deleting the item.'}, 500
-            return {'message': 'Item deleted'}
+            return {'message': 'Item deleted'}, 200
 
-        return {'message': 'Item not exist'}
+        return {'message': 'Item not exist'}, 400
 
 
 class ItemList(Resource):
@@ -85,8 +84,7 @@ class ItemStoreList(Resource):
     def get(self, name):
         item = ItemModel.find_by_name(name)
         if item:
-            return {'item': name,
-                    'stores': [store.name for store in item.stores]}
+            return item.json_item_stores()
         return {'message': 'Item not found'}, 404
 
 

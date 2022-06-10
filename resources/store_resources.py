@@ -1,6 +1,6 @@
 from flask_restful import Resource, reqparse
 
-from models.store_models import StoreModel
+from models.store_models import StoreModel, Item_Store
 from models.item_models import ItemModel
 
 class Store(Resource):
@@ -42,7 +42,7 @@ class Store(Resource):
         except:
             return {'message': 'An error occurred updating the item.'}, 500
 
-        return store.json()
+        return store.json(), 200
 
     def delete(self, name):
         store = StoreModel.find_by_name(name)
@@ -52,9 +52,9 @@ class Store(Resource):
                 store.delete_from_db()
             except:
                 return {'message': 'An error occurred deleting the item.'}, 500
-            return {'message': 'Item deleted'}
+            return {'message': 'Item deleted'}, 200
 
-        return {'message': 'Item not exist'}
+        return {'message': 'Item not exist'}, 400
 
 
 class StoreList(Resource):
@@ -87,36 +87,63 @@ class Assortment(Resource):
                         type=str,
                         required=True,
                         help='You must enter item that add in store.')
+    parser.add_argument('quantity',
+                        type=int,
+                        required=False)
     def post(self):
         data = Assortment.parser.parse_args()
         store = StoreModel.find_by_name(data['name'])
+        item = ItemModel.find_by_name(data['item'])
+
         if not store:
             return {'message': f"An store with name '{data['name']}' doesn't exist."}, 400
-        elif data['item'] in [item.name for item in store.items]:
+        elif not item:
+            return {'message': f"An item with name '{data['item']}' doesn't exist."}, 400
+        elif item.id in [delivery.item_id for delivery in store.stock]:
             return {'message': f"The item '{data['item']}' is already in '{data['name']}'."}, 400
 
-        item = ItemModel.find_by_name(data['item'])
-        if item:
-            try:
-                store.insert_item_in_store(item)
-            except:
-                return {'message': 'An error occurred inserting the item.'}, 500
-            return item.json(), 201
+        try:
+            store.insert_item_in_store(item, data['quantity'])
+        except:
+            return {'message': 'An error occurred inserting the item.'}, 500
 
-        return {'message': f"Item with name '{data['item']}' doesn't exist."}
+        return item.json(data['quantity']), 201
+
 
     def delete(self):
         data = Assortment.parser.parse_args()
         store = StoreModel.find_by_name(data['name'])
+        item = ItemModel.find_by_name(data['item'])
+
         if not store:
             return {'message': f"An store with name '{data['name']}' doesn't exist."}, 400
-        elif data['item'] in [item.name for item in store.items]:
-            item = ItemModel.find_by_name(data['item'])
+        elif not item:
+            return {'message': f"An item with name '{data['item']}' doesn't exist."}, 400
+        elif item.id in [delivery.item_id for delivery in store.stock]:
             try:
                 store.delete_item_from_store(item)
             except:
                 return {'message': 'An error occurred inserting the item.'}, 500
+            return {'message': f"Item with name '{data['item']}' removed from store '{data['name']}'."}, 200
 
-            return {'message': f"Item with name '{data['item']}' removed from store '{data['name']}'."}
+        return {'message': f"Item with name '{data['item']}' isn't in store '{data['name']}'."}, 400
 
-        return {'message': f"Item with name '{data['item']}' isn't in store '{data['name']}'."}
+    def patch(self):
+        data = Assortment.parser.parse_args()
+        store = StoreModel.find_by_name(data['name'])
+        item = ItemModel.find_by_name(data['item'])
+        if not store:
+            return {'message': f"An store with name '{data['name']}' doesn't exist."}, 400
+        elif not item:
+            return {'message': f"An item with name '{data['item']}' doesn't exist."}, 400
+
+        delivery = Item_Store.query.filter_by(item_id=item.id).filter_by(store_id=store.id).first()
+        if not delivery:
+            return {'message': f"An item with name '{data['item']}' doesn't in store '{data['name']}'."}, 400
+        delivery.quantity = data['quantity']
+
+        try:
+            delivery.save_to_db()
+        except:
+            return {'message': 'An error occurred inserting the item.'}, 500
+        return item.json(data['quantity']), 200
